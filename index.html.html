@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إدارة الأصناف وعروض الأسعار الاحترافية</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .print-shadow-none { box-shadow: none !important; border: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- ترويسة التطبيق -->
+        <header class="bg-white shadow-md rounded-2xl p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4 no-print">
+            <div>
+                <h1 id="companyTitleDisp" class="text-2xl font-bold text-blue-700">A TO Z SMART HOME</h1>
+                <p class="text-sm text-gray-500">إدارة المخزون، تتبع الأسعار، وإصدار عروض الأسعار للعملاء</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="switchTab('items')" id="btnTabItems" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold shadow transition">إدارة الأصناف والأسعار</button>
+                <button onclick="switchTab('quotation')" id="btnTabQuotation" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-semibold shadow transition">إنشاء عرض سعر</button>
+                <button onclick="switchTab('archive')" id="btnTabArchive" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-semibold shadow transition">أرشيف العروض</button>
+                <button onclick="switchTab('settings')" id="btnTabSettings" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-semibold shadow transition">بيانات الشركة</button>
+            </div>
+        </header>
+
+        <!-- المحتوى 1: قسم إدارة الأصناف -->
+        <section id="tabItems" class="space-y-6">
+            <div class="bg-white shadow-md rounded-2xl p-6 no-print">
+                <h2 class="text-xl font-bold mb-4 text-gray-700">إضافة أو تحديث صنف جديد</h2>
+                <form id="itemForm" onsubmit="saveItem(event)" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <input type="hidden" id="editIndex" value="-1">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">اسم الصنف والموديل</label>
+                        <input type="text" id="itemName" required class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="مثال: DS-2CD2T47G2-L">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">اسم الشركة الموردة (مصدر السعر)</label>
+                        <input type="text" id="itemSupplier" class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="مثال: شركة الهدى / وكيل داهوا">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">سعر التكلفة (لديك)</label>
+                        <input type="number" step="0.01" id="itemCost" required class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">سعر البيع المقترح للعميل</label>
+                        <input type="number" step="0.01" id="itemPrice" required class="w-full border rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="0.00">
+                    </div>
+                    <div class="flex items-end gap-2">
+                        <button type="submit" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-xl shadow transition">حفظ</button>
+                        <button type="button" onclick="resetForm()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 py-2 px-3 rounded-xl">إلغاء</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="bg-white shadow-md rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-4 no-print">
+                    <h2 class="text-xl font-bold text-gray-700">قائمة الأصناف المسجلة والأسعار</h2>
+                    <div class="flex gap-2">
+                        <button onclick="exportData()" class="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-sm rounded-lg border">تصدير نسخة احتياطية</button>
+                        <label class="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-sm rounded-lg border cursor-pointer">
+                            استيراد بيانات <input type="file" accept=".json" onchange="importData(event)" class="hidden">
+                        </label>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 text-sm">
+                                <th class="p-3 rounded-r-xl text-center" style="width: 80px;">الترتيب</th>
+                                <th class="p-3">الصنف والموديل والشركة الموردة</th>
+                                <th class="p-3">سعر التكلفة</th>
+                                <th class="p-3">سعر البيع للعميل</th>
+                                <th class="p-3">تاريخ آخر تحديث</th>
+                                <th class="p-3 rounded-l-xl text-center no-print">الإجراءات والتحكم</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTableBody" class="divide-y text-sm">
+                            <!-- يتم تعبئتها ديناميكياً -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- المحتوى 2: قسم إنشاء عرض السعر -->
+        <section id="tabQuotation" class="hidden space-y-6">
+            
+            <!-- أداة التوصية السريعة للكاميرات (مقترح 3) -->
+            <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5 no-print">
+                <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div>
+                        <h3 class="font-bold text-blue-800 text-base">حاسبة التوصية السريعة للمنظومة</h3>
+                        <p class="text-xs text-blue-600">أدخل عدد الكاميرات ليقوم النظام باقتراح سعة جهاز التسجيل والملحقات المناسبة</p>
+                    </div>
+                    <div class="flex items-center gap-2 w-full md:w-auto">
+                        <input type="number" id="calcCamCount" min="1" max="64" placeholder="عدد الكاميرات (مثال: 4)" class="border border-blue-300 rounded-xl px-3 py-2 text-sm w-44 focus:outline-none">
+                        <button onclick="recommendSetup()" class="bg-blue-700 hover:bg-blue-800 text-white text-sm font-bold px-4 py-2 rounded-xl transition">عرض التوصية</button>
+                    </div>
+                </div>
+                <div id="recommendationResult" class="hidden mt-3 pt-3 border-t border-blue-200 text-sm text-blue-900 font-semibold"></div>
+            </div>
+
+            <!-- بيانات العميل والهامش والخصم والضريبة (مقترح 1) -->
+            <div class="bg-white shadow-md rounded-2xl p-6 no-print grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">اسم العميل / الجهة</label>
+                    <input type="text" id="custName" class="w-full border rounded-xl px-3 py-2" placeholder="أدخل اسم العميل" oninput="updateQuotationHeader()">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">رقم الهاتف / العنوان</label>
+                    <input type="text" id="custPhone" class="w-full border rounded-xl px-3 py-2" placeholder="رقم الهاتف أو العنوان" oninput="updateQuotationHeader()">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">هامش ربح إضافي (%)</label>
+                    <input type="number" id="markupPct" value="0" class="w-full border rounded-xl px-3 py-2" placeholder="0" oninput="calcQuotationTotal()">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-red-600">قيمة الخصم (مبلغ ثابت)</label>
+                    <input type="number" id="discountVal" value="0" min="0" class="w-full border border-red-200 rounded-xl px-3 py-2" placeholder="0" oninput="calcQuotationTotal()">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1 text-emerald-700">نسبة الضريبة (%)</label>
+                    <input type="number" id="taxPct" value="0" min="0" class="w-full border border-emerald-200 rounded-xl px-3 py-2" placeholder="0" oninput="calcQuotationTotal()">
+                </div>
+            </div>
+
+            <!-- قسم الكابلات والملحقات الإضافية -->
+            <div class="bg-white shadow-md rounded-2xl p-6 no-print grid grid-cols-1 md:grid-cols-3 gap-4 border-r-4 border-blue-600">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">أمتار الكابلات الإضافية (متر)</label>
+                    <input type="number" id="extraCableMeters" value="0" min="0" class="w-full border rounded-xl px-3 py-2" placeholder="عدد الأمتار" oninput="calcQuotationTotal()">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">سعر المتر الواحد للعميل</label>
+                    <input type="number" id="extraCableUnitPrice" value="0" min="0" step="0.5" class="w-full border rounded-xl px-3 py-2" placeholder="سعر المتر" oninput="calcQuotationTotal()">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold mb-1">إجمالي تكلفة التركيب</label>
+                    <input type="number" id="extraAccessoriesCost" value="0" min="0" class="w-full border rounded-xl px-3 py-2" placeholder="الإجمالي" oninput="calcQuotationTotal()">
+                </div>
+            </div>
+
+            <!-- الملاحظات الخاصة بعرض السعر (مقترح 4) -->
+            <div class="bg-white shadow-md rounded-2xl p-6 no-print">
+                <label class="block text-sm font-semibold mb-2">ملاحظات خاصة بهذا العرض (تظهر أسفل العرض عند وجودها)</label>
+                <textarea id="customNotesInput" rows="2" class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="مثال: العرض لا يشمل أعمال التكسير أو الحفر، مدة التنفيذ يومين من تاريخ التعميد..." oninput="updateCustomNotes()"></textarea>
+            </div>
+
+            <!-- المنطقة القابلة للطباعة -->
+            <div class="bg-white shadow-md rounded-2xl p-8 print-shadow-none" id="printableArea">
+                <!-- ترويسة عرض السعر المطبوعة -->
+                <div class="flex justify-between items-start border-b pb-6 mb-6">
+                    <div>
+                        <h2 id="qCompanyTitle" class="text-2xl font-bold text-blue-700">A TO Z SMART HOME</h2>
+                        <div id="qCompanyDetails" class="text-sm text-gray-500 mt-1 space-y-0.5">
+                            <p id="qAddressText">العنوان: القنطرة شرق - المدينة الجديدة - امتداد ش جامعة سيناء</p>
+                            <p id="qPhoneText">الهاتف: 01096973740</p>
+                        </div>
+                    </div>
+                    <div class="text-left">
+                        <h3 class="text-xl font-bold text-gray-800">عرض سعر (Quotation)</h3>
+                        <p class="text-sm text-gray-500 mt-1">التاريخ: <span id="qDate"></span></p>
+                        <p class="text-sm text-gray-500">موجه إلى: <span id="qCustDisp" class="font-semibold text-gray-800">عميل عام</span></p>
+                        <p id="qCustPhoneRow" class="text-sm text-gray-500 hidden">بيانات العميل: <span id="qCustPhoneDisp" class="font-semibold text-gray-800"></span></p>
+                    </div>
+                </div>
+
+                <div class="mb-4 no-print flex justify-between items-center">
+                    <h4 class="font-bold text-gray-700">اختر الأصناف والكميات المطلوب عرضها للعميل:</h4>
+                    <button onclick="clearQuotationSelection()" class="text-xs text-red-600 hover:underline">إلغاء تحديد الكل</button>
+                </div>
+
+                <div class="overflow-x-auto mb-6">
+                    <table class="w-full text-right border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 text-sm">
+                                <th class="p-3 rounded-r-xl no-print text-center" style="width: 50px;">اختيار</th>
+                                <th class="p-3 text-center" style="width: 70px;">م</th>
+                                <th class="p-3">البند / الموديل ووصف المواصفات</th>
+                                <th class="p-3 text-center" style="width: 100px;">الكمية</th>
+                                <th class="p-3 text-center">سعر الوحدة (للعميل)</th>
+                                <th class="p-3 text-left rounded-l-xl">الإجمالي</th>
+                            </tr>
+                        </thead>
+                        <tbody id="quotationTableBody" class="divide-y text-sm">
+                            <!-- البنود -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- إجمالي عرض السعر -->
+                <div class="flex justify-end mb-8">
+                    <div class="w-80 bg-gray-50 p-4 rounded-2xl border space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span>إجمالي الأجهزة:</span>
+                            <span id="subTotalAmt" class="font-bold">0.00</span>
+                        </div>
+                        <div id="cableRowDisp" class="flex justify-between text-sm hidden text-blue-600">
+                            <span id="cableTextDisp">الكابلات الإضافية:</span>
+                            <span id="cableTotalDisp">0.00</span>
+                        </div>
+                        <div id="accRowDisp" class="flex justify-between text-sm hidden text-blue-600">
+                            <span>سعر التركيب:</span>
+                            <span id="accTotalDisp">0.00</span>
+                        </div>
+                        <div id="discountRowDisp" class="flex justify-between text-sm hidden text-red-600 font-semibold">
+                            <span>الخصم:</span>
+                            <span id="discountTotalDisp">- 0.00</span>
+                        </div>
+                        <div id="taxRowDisp" class="flex justify-between text-sm hidden text-emerald-700 font-semibold">
+                            <span id="taxTextDisp">الضريبة:</span>
+                            <span id="taxTotalDisp">+ 0.00</span>
+                        </div>
+                        <div class="flex justify-between text-base border-t pt-2 font-bold text-blue-700">
+                            <span>الإجمالي النهائي:</span>
+                            <span id="grandTotalAmt">0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- قسم الملاحظات الخاصة المطبوعة (مقترح 4) -->
+                <div id="customNotesDispBox" class="hidden mb-4 p-3 bg-amber-50/60 border border-amber-200 rounded-xl text-xs text-gray-700">
+                    <p class="font-bold text-amber-900 mb-1">ملاحظات إضافية:</p>
+                    <p id="customNotesDispText" class="whitespace-pre-line"></p>
+                </div>
+
+                <!-- الشروط والأحكام -->
+                <div class="border-t pt-4 text-xs text-gray-500 space-y-1">
+                    <p><strong>شروط العرض:</strong></p>
+                    <p>1. هذا العرض ساري لمدة 15 يوماً من تاريخه.</p>
+                    <p>2. شامل التوريد والتركيب والبرمجة والتدريب على النظام.</p>
+                    <p>3. الضمان سنة ضد عيوب الصناعة.</p>
+                </div>
+            </div>
+
+            <!-- أزرار التحكم والحفظ والطباعة -->
+            <div class="flex flex-wrap justify-end gap-3 no-print">
+                <button onclick="saveQuotationToArchive()" class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 px-6 rounded-xl shadow transition">حفظ في الأرشيف</button>
+                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-6 rounded-xl shadow transition">طباعة عرض السعر / حفظ PDF</button>
+                <button onclick="sendWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 px-6 rounded-xl shadow transition">مشاركة عبر واتساب</button>
+            </div>
+        </section>
+
+        <!-- المحتوى 3: قسم أرشيف عروض الأسعار (مقترح 2) -->
+        <section id="tabArchive" class="hidden space-y-6">
+            <div class="bg-white shadow-md rounded-2xl p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-700">أرشيف عروض الأسعار المحفوظة</h2>
+                        <p class="text-xs text-gray-500">يمكنك استرجاع أي عرض سعر سابق للتعديل عليه أو طباعته مرة أخرى</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right border-collapse">
+                        <thead>
+                            <tr class="bg-gray-100 text-gray-600 text-sm">
+                                <th class="p-3 rounded-r-xl">التاريخ</th>
+                                <th class="p-3">اسم العميل</th>
+                                <th class="p-3">عدد البنود</th>
+                                <th class="p-3">الإجمالي النهائي</th>
+                                <th class="p-3 rounded-l-xl text-center">الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archiveTableBody" class="divide-y text-sm">
+                            <!-- يتم تعبئتها ديناميكياً -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- المحتوى 4: قسم إعدادات الشركة -->
+        <section id="tabSettings" class="hidden space-y-6">
+            <div class="bg-white shadow-md rounded-2xl p-6 max-w-xl mx-auto">
+                <h2 class="text-xl font-bold mb-4 text-gray-700">تخصيص ترويسة عرض السعر</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">اسم الشركة / المكتب</label>
+                        <input type="text" id="setCompanyName" class="w-full border rounded-xl px-3 py-2" placeholder="اسم شركتك">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">العنوان</label>
+                        <input type="text" id="setCompanyAddress" class="w-full border rounded-xl px-3 py-2" placeholder="العنوان: ...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold mb-1">رقم الهاتف</label>
+                        <input type="text" id="setCompanyPhone" class="w-full border rounded-xl px-3 py-2" placeholder="الهاتف: ...">
+                    </div>
+                    <button onclick="saveSettings()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl shadow transition">حفظ الإعدادات</button>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        let items = JSON.parse(localStorage.getItem('cc_items')) || [
+            { name: "كاميرا DS-2CD2T47G2-L (4MP ColorVu)", supplier: "شركة الموستر", cost: 2500, price: 3200, date: "2026-05-01 10:00" },
+            { name: "جهاز تسجيل NVR 8 قنوات AcuSense", supplier: "الوكيل المعتمد", cost: 4500, price: 5800, date: "2026-05-01 10:00" },
+            { name: "هارد ديسك مراقبة 2TB WD Purple", supplier: "مؤسسة الأمان", cost: 2800, price: 3500, date: "2026-05-01 10:00" }
+        ];
+
+        let quotationsArchive = JSON.parse(localStorage.getItem('cc_archive')) || [];
+
+        let savedCompany = JSON.parse(localStorage.getItem('cc_company')) || {};
+        let companyInfo = {
+            name: savedCompany.name || "A TO Z SMART HOME",
+            address: savedCompany.address || "العنوان: القنطرة شرق - المدينة الجديدة - امتداد ش جامعة سيناء",
+            phone: savedCompany.phone || "الهاتف: 01096973740"
+        };
+
+        function init() {
+            document.getElementById('setCompanyName').value = companyInfo.name;
+            document.getElementById('setCompanyAddress').value = companyInfo.address;
+            document.getElementById('setCompanyPhone').value = companyInfo.phone;
+            
+            document.getElementById('companyTitleDisp').innerText = companyInfo.name;
+            document.getElementById('qCompanyTitle').innerText = companyInfo.name;
+            
+            document.getElementById('qAddressText').innerText = companyInfo.address;
+            document.getElementById('qPhoneText').innerText = companyInfo.phone;
+            
+            document.getElementById('qDate').innerText = new Date().toISOString().split('T')[0];
+
+            renderItemsTable();
+            renderQuotationItems();
+            renderArchiveTable();
+        }
+
+        function switchTab(tab) {
+            ['tabItems', 'tabQuotation', 'tabArchive', 'tabSettings'].forEach(id => {
+                document.getElementById(id).classList.add('hidden');
+            });
+            ['btnTabItems', 'btnTabQuotation', 'btnTabArchive', 'btnTabSettings'].forEach(id => {
+                document.getElementById(id).className = "px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-semibold shadow transition";
+            });
+
+            if(tab === 'items') {
+                document.getElementById('tabItems').classList.remove('hidden');
+                document.getElementById('btnTabItems').className = "px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold shadow transition";
+                renderItemsTable();
+            } else if(tab === 'quotation') {
+                document.getElementById('tabQuotation').classList.remove('hidden');
+                document.getElementById('btnTabQuotation').className = "px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold shadow transition";
+            } else if(tab === 'archive') {
+                document.getElementById('tabArchive').classList.remove('hidden');
+                document.getElementById('btnTabArchive').className = "px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold shadow transition";
+                renderArchiveTable();
+            } else if(tab === 'settings') {
+                document.getElementById('tabSettings').classList.remove('hidden');
+                document.getElementById('btnTabSettings').className = "px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold shadow transition";
+            }
+        }
+
+        // --- إدارة الأصناف ---
+        function saveItem(e) {
+            e.preventDefault();
+            const idx = parseInt(document.getElementById('editIndex').value);
+            const name = document.getElementById('itemName').value;
+            const supplier = document.getElementById('itemSupplier').value;
+            const cost = parseFloat(document.getElementById('itemCost').value);
+            const price = parseFloat(document.getElementById('itemPrice').value);
+            const now = new Date().toISOString().replace('T', ' ').substring(0, 16);
+
+            if (idx === -1) {
+                items.push({ name, supplier, cost, price, date: now });
+            } else {
+                items[idx] = { ...items[idx], name, supplier, cost, price, date: now };
+                document.getElementById('editIndex').value = -1;
+            }
+
+            localStorage.setItem('cc_items', JSON.stringify(items));
+            document.getElementById('itemForm').reset();
+            renderItemsTable();
+            renderQuotationItems();
+        }
+
+        function resetForm() {
+            document.getElementById('itemForm').reset();
+            document.getElementById('editIndex').value = -1;
+        }
+
+        function moveItemUp(index) {
+            if (index > 0) {
+                [items[index], items[index - 1]] = [items[index - 1], items[index]];
+                localStorage.setItem('cc_items', JSON.stringify(items));
+                renderItemsTable();
+                renderQuotationItems();
+            }
+        }
+
+        function moveItemDown(index) {
+            if (index < items.length - 1) {
+                [items[index], items[index + 1]] = [items[index + 1], items[index]];
+                localStorage.setItem('cc_items', JSON.stringify(items));
+                renderItemsTable();
+                renderQuotationItems();
+            }
+        }
+
+        function changeItemPosition(index, newPosInput) {
+            let newPos = parseInt(newPosInput.value) - 1;
+            if (isNaN(newPos)) return;
+            newPos = Math.max(0, Math.min(items.length - 1, newPos));
+
+            if (newPos !== index) {
+                const movedItem = items.splice(index, 1)[0];
+                items.splice(newPos, 0, movedItem);
+                localStorage.setItem('cc_items', JSON.stringify(items));
+                renderItemsTable();
+                renderQuotationItems();
+            }
+        }
+
+        function renderItemsTable() {
+            const tbody = document.getElementById('itemsTableBody');
+            tbody.innerHTML = '';
+            const now = new Date();
+
+            items.forEach((item, index) => {
+                const itemDate = new Date(item.date);
+                const diffDays = Math.floor((now - itemDate) / (1000 * 60 * 60 * 24));
+                let badge = `<span class="text-gray-500">${item.date}</span>`;
+                if (diffDays > 14) {
+                    badge = `<span class="bg-amber-100 text-amber-800 px-2 py-1 rounded-md text-xs font-semibold" title="مر أكثر من أسبوعين على تحديث السعر">⚠️ ${item.date} (${diffDays} يوم)</span>`;
+                }
+
+                const supplierText = item.supplier ? `<span class="text-xs text-gray-500 block">المورد: ${item.supplier}</span>` : '';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="p-3 text-center">
+                            <input type="number" value="${index + 1}" min="1" max="${items.length}" onchange="changeItemPosition(${index}, this)" class="w-12 border text-center rounded-lg py-1 text-sm font-bold bg-gray-50">
+                        </td>
+                        <td class="p-3">
+                            <span class="font-semibold block">${item.name}</span>
+                            ${supplierText}
+                        </td>
+                        <td class="p-3">${item.cost.toLocaleString()}</td>
+                        <td class="p-3 text-blue-600 font-bold">${item.price.toLocaleString()}</td>
+                        <td class="p-3">${badge}</td>
+                        <td class="p-3 text-center no-print flex items-center justify-center gap-2">
+                            <div class="flex flex-col gap-0.5">
+                                <button onclick="moveItemUp(${index})" ${index === 0 ? 'disabled class="text-gray-300 cursor-not-allowed"' : 'class="text-gray-600 hover:text-blue-600 font-bold text-xs"'} title="تحريك لأعلى">▲</button>
+                                <button onclick="moveItemDown(${index})" ${index === items.length - 1 ? 'disabled class="text-gray-300 cursor-not-allowed"' : 'class="text-gray-600 hover:text-blue-600 font-bold text-xs"'} title="تحريك لأسفل">▼</button>
+                            </div>
+                            <button onclick="editItem(${index})" class="text-blue-600 hover:underline px-2 py-1 text-xs bg-blue-50 rounded-lg">تعديل</button>
+                            <button onclick="deleteItem(${index})" class="text-red-600 hover:underline px-2 py-1 text-xs bg-red-50 rounded-lg">حذف</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function editItem(index) {
+            document.getElementById('editIndex').value = index;
+            document.getElementById('itemName').value = items[index].name;
+            document.getElementById('itemSupplier').value = items[index].supplier || '';
+            document.getElementById('itemCost').value = items[index].cost;
+            document.getElementById('itemPrice').value = items[index].price;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function deleteItem(index) {
+            if(confirm('هل أنت متأكد من حذف هذا الصنف؟')) {
+                items.splice(index, 1);
+                localStorage.setItem('cc_items', JSON.stringify(items));
+                renderItemsTable();
+                renderQuotationItems();
+            }
+        }
+
+        // --- حاسبة التوصية للكاميرات (مقترح 3) ---
+        function recommendSetup() {
+            const count = parseInt(document.getElementById('calcCamCount').value);
+            const resBox = document.getElementById('recommendationResult');
+            if (!count || count < 1) {
+                alert('يرجى إدخال عدد كاميرات صحيح');
+                return;
+            }
+            let channels = 4;
+            if (count > 4 && count <= 8) channels = 8;
+            else if (count > 8 && count <= 16) channels = 16;
+            else if (count > 16 && count <= 32) channels = 32;
+            else if (count > 32) channels = 64;
+
+            const recommendedStorage = count <= 4 ? '1TB' : (count <= 8 ? '2TB' : (count <= 16 ? '4TB' : '6TB أو أكثر'));
+            const bncCount = count * 2;
+            const dcCount = count;
+
+            resBox.innerHTML = `
+                التوصية لـ (${count}) كاميرات: 
+                • جهاز تسجيل (${channels} قنوات) 
+                • هارد ديسك (${recommendedStorage}) 
+                • باور سبلاي (${count} أمبير فأعلى) 
+                • عدد (${bncCount}) كونكتور BNC و (${dcCount}) كونكتور DC.
+            `;
+            resBox.classList.remove('hidden');
+        }
+
+        // --- إنشاء عرض السعر ---
+        function updateQuotationHeader() {
+            const custName = document.getElementById('custName').value || 'عميل عام';
+            const custPhone = document.getElementById('custPhone').value.trim();
+            document.getElementById('qCustDisp').innerText = custName;
+
+            const phoneRow = document.getElementById('qCustPhoneRow');
+            if (custPhone) {
+                phoneRow.classList.remove('hidden');
+                document.getElementById('qCustPhoneDisp').innerText = custPhone;
+            } else {
+                phoneRow.classList.add('hidden');
+            }
+        }
+
+        function updateCustomNotes() {
+            const notes = document.getElementById('customNotesInput').value.trim();
+            const box = document.getElementById('customNotesDispBox');
+            if (notes) {
+                box.classList.remove('hidden');
+                document.getElementById('customNotesDispText').innerText = notes;
+            } else {
+                box.classList.add('hidden');
+            }
+        }
+
+        function clearQuotationSelection() {
+            items.forEach((_, index) => {
+                const chk = document.getElementById(`q_check_${index}`);
+                if (chk) chk.checked = false;
+            });
+            calcQuotationTotal();
+        }
+
+        function renderQuotationItems() {
+            const tbody = document.getElementById('quotationTableBody');
+            tbody.innerHTML = '';
+            updateQuotationHeader();
+
+            items.forEach((item, index) => {
+                tbody.innerHTML += `
+                    <tr id="q_row_${index}" class="border-b no-print">
+                        <td class="p-3 no-print text-center">
+                            <input type="checkbox" id="q_check_${index}" onchange="calcQuotationTotal()" class="w-4 h-4 text-blue-600 rounded">
+                        </td>
+                        <td class="p-3 text-center font-bold text-gray-500" id="q_seq_${index}">${index + 1}</td>
+                        <td class="p-3 font-medium">${item.name}</td>
+                        <td class="p-3 text-center" style="width: 100px;">
+                            <input type="number" id="q_qty_${index}" value="1" min="0" onchange="calcQuotationTotal()" class="w-16 border text-center rounded-lg py-1">
+                        </td>
+                        <td class="p-3 text-center" id="q_price_${index}">0.00</td>
+                        <td class="p-3 text-left font-bold" id="q_total_${index}">0.00</td>
+                    </tr>
+                `;
+            });
+            calcQuotationTotal();
+        }
+
+        function calcQuotationTotal() {
+            let subTotal = 0;
+            let printedSeq = 1;
+            const markup = parseFloat(document.getElementById('markupPct').value) || 0;
+
+            items.forEach((item, index) => {
+                const chk = document.getElementById(`q_check_${index}`);
+                const qtyInput = document.getElementById(`q_qty_${index}`);
+                const row = document.getElementById(`q_row_${index}`);
+                const seqCell = document.getElementById(`q_seq_${index}`);
+                
+                if (qtyInput) {
+                    const qty = parseFloat(qtyInput.value) || 0;
+                    const adjustedPrice = item.price * (1 + markup / 100);
+                    const lineTotal = qty * adjustedPrice;
+
+                    document.getElementById(`q_price_${index}`).innerText = adjustedPrice.toFixed(2);
+
+                    if (chk && chk.checked) {
+                        subTotal += lineTotal;
+                        document.getElementById(`q_total_${index}`).innerText = lineTotal.toLocaleString();
+                        if (row) row.classList.remove('no-print');
+                        if (seqCell) seqCell.innerText = printedSeq++;
+                    } else {
+                        document.getElementById(`q_total_${index}`).innerText = '0.00';
+                        if (row) row.classList.add('no-print');
+                        if (seqCell) seqCell.innerText = index + 1;
+                    }
+                }
+            });
+
+            const cableMeters = parseFloat(document.getElementById('extraCableMeters').value) || 0;
+            const cableUnitPrice = parseFloat(document.getElementById('extraCableUnitPrice').value) || 0;
+            const cableTotal = cableMeters * cableUnitPrice;
+
+            const accCost = parseFloat(document.getElementById('extraAccessoriesCost').value) || 0;
+            const discount = parseFloat(document.getElementById('discountVal').value) || 0;
+            const taxPct = parseFloat(document.getElementById('taxPct').value) || 0;
+
+            document.getElementById('subTotalAmt').innerText = subTotal.toLocaleString();
+
+            const cableRow = document.getElementById('cableRowDisp');
+            if (cableTotal > 0) {
+                cableRow.classList.remove('hidden');
+                document.getElementById('cableTextDisp').innerText = `الكابلات الإضافية (${cableMeters} متر):`;
+                document.getElementById('cableTotalDisp').innerText = cableTotal.toLocaleString();
+            } else {
+                cableRow.classList.add('hidden');
+            }
+
+            const accRow = document.getElementById('accRowDisp');
+            if (accCost > 0) {
+                accRow.classList.remove('hidden');
+                document.getElementById('accTotalDisp').innerText = accCost.toLocaleString();
+            } else {
+                accRow.classList.add('hidden');
+            }
+
+            const beforeAdjustments = subTotal + cableTotal + accCost;
+            const afterDiscount = Math.max(0, beforeAdjustments - discount);
+            const taxAmount = afterDiscount * (taxPct / 100);
+            const grandTotal = afterDiscount + taxAmount;
+
+            const discountRow = document.getElementById('discountRowDisp');
+            if (discount > 0) {
+                discountRow.classList.remove('hidden');
+                document.getElementById('discountTotalDisp').innerText = `- ${discount.toLocaleString()}`;
+            } else {
+                discountRow.classList.add('hidden');
+            }
+
+            const taxRow = document.getElementById('taxRowDisp');
+            if (taxAmount > 0) {
+                taxRow.classList.remove('hidden');
+                document.getElementById('taxTextDisp').innerText = `الضريبة (${taxPct}%):`;
+                document.getElementById('taxTotalDisp').innerText = `+ ${taxAmount.toLocaleString()}`;
+            } else {
+                taxRow.classList.add('hidden');
+            }
+
+            document.getElementById('grandTotalAmt').innerText = grandTotal.toLocaleString();
+            return grandTotal;
+        }
+
+        // --- أرشيف عروض الأسعار (مقترح 2) ---
+        function saveQuotationToArchive() {
+            const custName = document.getElementById('custName').value || 'عميل عام';
+            const custPhone = document.getElementById('custPhone').value || '';
+            const markupPct = parseFloat(document.getElementById('markupPct').value) || 0;
+            const discountVal = parseFloat(document.getElementById('discountVal').value) || 0;
+            const taxPct = parseFloat(document.getElementById('taxPct').value) || 0;
+            const extraCableMeters = parseFloat(document.getElementById('extraCableMeters').value) || 0;
+            const extraCableUnitPrice = parseFloat(document.getElementById('extraCableUnitPrice').value) || 0;
+            const extraAccessoriesCost = parseFloat(document.getElementById('extraAccessoriesCost').value) || 0;
+            const customNotes = document.getElementById('customNotesInput').value || '';
+
+            const selectedItems = [];
+            items.forEach((item, index) => {
+                const chk = document.getElementById(`q_check_${index}`);
+                const qtyInput = document.getElementById(`q_qty_${index}`);
+                if (chk && chk.checked && qtyInput) {
+                    selectedItems.push({
+                        name: item.name,
+                        qty: parseFloat(qtyInput.value) || 1
+                    });
+                }
+            });
+
+            if (selectedItems.length === 0 && extraCableMeters === 0 && extraAccessoriesCost === 0) {
+                alert('يرجى اختيار صنف واحد على الأقل قبل الحفظ في الأرشيف.');
+                return;
+            }
+
+            const grandTotal = calcQuotationTotal();
+            const record = {
+                id: Date.now(),
+                date: new Date().toISOString().split('T')[0],
+                custName,
+                custPhone,
+                markupPct,
+                discountVal,
+                taxPct,
+                extraCableMeters,
+                extraCableUnitPrice,
+                extraAccessoriesCost,
+                customNotes,
+                selectedItems,
+                grandTotal
+            };
+
+            quotationsArchive.unshift(record);
+            localStorage.setItem('cc_archive', JSON.stringify(quotationsArchive));
+            alert('تم حفظ عرض السعر في الأرشيف بنجاح!');
+        }
+
+        function renderArchiveTable() {
+            const tbody = document.getElementById('archiveTableBody');
+            tbody.innerHTML = '';
+
+            if (quotationsArchive.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-gray-400">لا توجد عروض أسعار محفوظة في الأرشيف حتى الآن.</td></tr>`;
+                return;
+            }
+
+            quotationsArchive.forEach((rec, idx) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="p-3 text-gray-600">${rec.date}</td>
+                        <td class="p-3 font-bold">${rec.custName} <span class="block text-xs font-normal text-gray-400">${rec.custPhone}</span></td>
+                        <td class="p-3">${rec.selectedItems.length} بنود</td>
+                        <td class="p-3 text-blue-700 font-bold">${rec.grandTotal.toLocaleString()}</td>
+                        <td class="p-3 text-center flex justify-center gap-2">
+                            <button onclick="loadArchivedQuotation(${idx})" class="bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1 rounded-lg text-xs font-semibold">فتح وتعديل</button>
+                            <button onclick="deleteArchivedQuotation(${idx})" class="bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1 rounded-lg text-xs font-semibold">حذف</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function loadArchivedQuotation(idx) {
+            const rec = quotationsArchive[idx];
+            if (!rec) return;
+
+            document.getElementById('custName').value = rec.custName;
+            document.getElementById('custPhone').value = rec.custPhone;
+            document.getElementById('markupPct').value = rec.markupPct;
+            document.getElementById('discountVal').value = rec.discountVal;
+            document.getElementById('taxPct').value = rec.taxPct;
+            document.getElementById('extraCableMeters').value = rec.extraCableMeters;
+            document.getElementById('extraCableUnitPrice').value = rec.extraCableUnitPrice;
+            document.getElementById('extraAccessoriesCost').value = rec.extraAccessoriesCost;
+            document.getElementById('customNotesInput').value = rec.customNotes;
+
+            renderQuotationItems();
+            updateCustomNotes();
+
+            items.forEach((item, index) => {
+                const found = rec.selectedItems.find(s => s.name === item.name);
+                const chk = document.getElementById(`q_check_${index}`);
+                const qtyInput = document.getElementById(`q_qty_${index}`);
+                if (found && chk && qtyInput) {
+                    chk.checked = true;
+                    qtyInput.value = found.qty;
+                }
+            });
+
+            calcQuotationTotal();
+            switchTab('quotation');
+        }
+
+        function deleteArchivedQuotation(idx) {
+            if (confirm('هل أنت متأكد من حذف عرض السعر هذا من الأرشيف؟')) {
+                quotationsArchive.splice(idx, 1);
+                localStorage.setItem('cc_archive', JSON.stringify(quotationsArchive));
+                renderArchiveTable();
+            }
+        }
+
+        // --- الإعدادات والتصدير والواتساب ---
+        function saveSettings() {
+            companyInfo.name = document.getElementById('setCompanyName').value;
+            companyInfo.address = document.getElementById('setCompanyAddress').value;
+            companyInfo.phone = document.getElementById('setCompanyPhone').value;
+            
+            localStorage.setItem('cc_company', JSON.stringify(companyInfo));
+            init();
+            alert('تم حفظ إعدادات الشركة بنجاح!');
+        }
+
+        function exportData() {
+            const backup = { items, archive: quotationsArchive, company: companyInfo };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup));
+            const dlAnchorElem = document.createElement('a');
+            dlAnchorElem.setAttribute("href", dataStr);
+            dlAnchorElem.setAttribute("download", "cctv_system_backup.json");
+            dlAnchorElem.click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (Array.isArray(parsed)) {
+                        items = parsed;
+                    } else if (parsed.items) {
+                        items = parsed.items;
+                        if (parsed.archive) quotationsArchive = parsed.archive;
+                        if (parsed.company) companyInfo = parsed.company;
+                    }
+                    localStorage.setItem('cc_items', JSON.stringify(items));
+                    localStorage.setItem('cc_archive', JSON.stringify(quotationsArchive));
+                    localStorage.setItem('cc_company', JSON.stringify(companyInfo));
+                    init();
+                    alert('تم استيراد البيانات بنجاح!');
+                } catch(err) {
+                    alert('ملف غير صالح!');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function sendWhatsApp() {
+            const custName = document.getElementById('custName').value || 'العميل الكريم';
+            let text = `مرحباً بك ${custName}، إليك تفاصيل عرض السعر لتركيب كاميرات المراقبة:\n\n`;
+            let subTotal = 0;
+            const markup = parseFloat(document.getElementById('markupPct').value) || 0;
+
+            items.forEach((item, index) => {
+                const chk = document.getElementById(`q_check_${index}`);
+                const qtyInput = document.getElementById(`q_qty_${index}`);
+                if (chk && chk.checked && qtyInput) {
+                    const qty = parseFloat(qtyInput.value) || 0;
+                    if(qty > 0) {
+                        const p = item.price * (1 + markup / 100);
+                        text += `▪️ ${item.name} | الكمية: ${qty} | الإجمالي: ${(p*qty).toLocaleString()}\n`;
+                        subTotal += (p * qty);
+                    }
+                }
+            });
+
+            const cableMeters = parseFloat(document.getElementById('extraCableMeters').value) || 0;
+            const cableUnitPrice = parseFloat(document.getElementById('extraCableUnitPrice').value) || 0;
+            const cableTotal = cableMeters * cableUnitPrice;
+            if (cableTotal > 0) {
+                text += `▪️ كابلات إضافية (${cableMeters} متر) | الإجمالي: ${cableTotal.toLocaleString()}\n`;
+            }
+
+            const accCost = parseFloat(document.getElementById('extraAccessoriesCost').value) || 0;
+            if (accCost > 0) {
+                text += `▪️ تكلفة التركيب | الإجمالي: ${accCost.toLocaleString()}\n`;
+            }
+
+            const discount = parseFloat(document.getElementById('discountVal').value) || 0;
+            const taxPct = parseFloat(document.getElementById('taxPct').value) || 0;
+            const afterDiscount = Math.max(0, (subTotal + cableTotal + accCost) - discount);
+            const taxAmount = afterDiscount * (taxPct / 100);
+            const grandTotal = afterDiscount + taxAmount;
+
+            if (discount > 0) text += `\n▫️ الخصم: -${discount.toLocaleString()}`;
+            if (taxAmount > 0) text += `\n▫️ الضريبة (${taxPct}%): +${taxAmount.toLocaleString()}`;
+
+            const notes = document.getElementById('customNotesInput').value.trim();
+            if (notes) text += `\n\n📌 *ملاحظات:* ${notes}`;
+
+            text += `\n\n*الإجمالي النهائي: ${grandTotal.toLocaleString()}*\n\nشاكرين تواصلكم معنا (${companyInfo.name})`;
+            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
