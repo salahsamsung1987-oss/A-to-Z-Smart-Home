@@ -94,7 +94,7 @@
         <!-- المحتوى 2: قسم إنشاء عرض السعر -->
         <section id="tabQuotation" class="hidden space-y-6">
             
-            <!-- أداة التوصية السريعة للكاميرات (مقترح 3) -->
+            <!-- أداة التوصية السريعة للكاميرات -->
             <div class="bg-blue-50 border border-blue-200 rounded-2xl p-5 no-print">
                 <div class="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div>
@@ -109,7 +109,7 @@
                 <div id="recommendationResult" class="hidden mt-3 pt-3 border-t border-blue-200 text-sm text-blue-900 font-semibold"></div>
             </div>
 
-            <!-- بيانات العميل والهامش والخصم والضريبة (مقترح 1) -->
+            <!-- بيانات العميل والهامش والخصم والضريبة -->
             <div class="bg-white shadow-md rounded-2xl p-6 no-print grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div>
                     <label class="block text-sm font-semibold mb-1">اسم العميل / الجهة</label>
@@ -149,7 +149,7 @@
                 </div>
             </div>
 
-            <!-- الملاحظات الخاصة بعرض السعر (مقترح 4) -->
+            <!-- الملاحظات الخاصة بعرض السعر -->
             <div class="bg-white shadow-md rounded-2xl p-6 no-print">
                 <label class="block text-sm font-semibold mb-2">ملاحظات خاصة بهذا العرض (تظهر أسفل العرض عند وجودها)</label>
                 <textarea id="customNotesInput" rows="2" class="w-full border rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="مثال: العرض لا يشمل أعمال التكسير أو الحفر، مدة التنفيذ يومين من تاريخ التعميد..." oninput="updateCustomNotes()"></textarea>
@@ -227,7 +227,7 @@
                     </div>
                 </div>
 
-                <!-- قسم الملاحظات الخاصة المطبوعة (مقترح 4) -->
+                <!-- قسم الملاحظات الخاصة المطبوعة -->
                 <div id="customNotesDispBox" class="hidden mb-4 p-3 bg-amber-50/60 border border-amber-200 rounded-xl text-xs text-gray-700">
                     <p class="font-bold text-amber-900 mb-1">ملاحظات إضافية:</p>
                     <p id="customNotesDispText" class="whitespace-pre-line"></p>
@@ -250,7 +250,7 @@
             </div>
         </section>
 
-        <!-- المحتوى 3: قسم أرشيف عروض الأسعار (مقترح 2) -->
+        <!-- المحتوى 3: قسم أرشيف عروض الأسعار -->
         <section id="tabArchive" class="hidden space-y-6">
             <div class="bg-white shadow-md rounded-2xl p-6">
                 <div class="flex justify-between items-center mb-6">
@@ -302,6 +302,11 @@
     </div>
 
     <script>
+        // تسجيل الـ Service Worker ليعمل التطبيق بدون إنترنت
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+
         let items = JSON.parse(localStorage.getItem('cc_items')) || [
             { name: "كاميرا DS-2CD2T47G2-L (4MP ColorVu)", supplier: "شركة الموستر", cost: 2500, price: 3200, date: "2026-05-01 10:00" },
             { name: "جهاز تسجيل NVR 8 قنوات AcuSense", supplier: "الوكيل المعتمد", cost: 4500, price: 5800, date: "2026-05-01 10:00" },
@@ -478,7 +483,7 @@
             }
         }
 
-        // --- حاسبة التوصية للكاميرات (مقترح 3) ---
+        // --- حاسبة التوصية للكاميرات ---
         function recommendSetup() {
             const count = parseInt(document.getElementById('calcCamCount').value);
             const resBox = document.getElementById('recommendationResult');
@@ -648,7 +653,7 @@
             return grandTotal;
         }
 
-        // --- أرشيف عروض الأسعار (مقترح 2) ---
+        // --- أرشيف عروض الأسعار ---
         function saveQuotationToArchive() {
             const custName = document.getElementById('custName').value || 'عميل عام';
             const custPhone = document.getElementById('custPhone').value || '';
